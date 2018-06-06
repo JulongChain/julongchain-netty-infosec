@@ -275,6 +275,11 @@ final class CipherSuiteConverter {
      * @return The translated cipher suite name according to java conventions. This will not be {@code null}.
      */
     static String toJava(String openSslCipherSuite, String protocol) {
+        if (openSslCipherSuite.equals("ECDHE-SM4-SM3")) {
+            return protocol.concat("_ECDHE_WITH_SM4_SM3");
+        } else if (openSslCipherSuite.equals("ECC-SM4-SM3")) {
+            return protocol.concat("_ECC_WITH_SM4_SM3");
+        }
         Map<String, String> p2j = o2j.get(openSslCipherSuite);
         if (p2j == null) {
             p2j = cacheFromOpenSsl(openSslCipherSuite);

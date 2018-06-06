@@ -15,10 +15,6 @@
  */
 package io.netty.handler.ssl;
 
-import java.security.PrivateKey;
-
-import javax.security.auth.Destroyable;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -26,6 +22,10 @@ import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.CharsetUtil;
 import io.netty.util.IllegalReferenceCountException;
 import io.netty.util.internal.ObjectUtil;
+import org.bouncycastle.util.encoders.Base64;
+
+import javax.security.auth.Destroyable;
+import java.security.PrivateKey;
 
 /**
  * This is a special purpose implementation of a {@link PrivateKey} which allows the
@@ -44,7 +44,9 @@ public final class PemPrivateKey extends AbstractReferenceCounted implements Pri
     private static final long serialVersionUID = 7978017465645018936L;
 
     private static final byte[] BEGIN_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\n".getBytes(CharsetUtil.US_ASCII);
+    private static final byte[] BEGIN_EC_PRIVATE_KEY = "-----BEGIN EC PRIVATE KEY-----\n".getBytes(CharsetUtil.US_ASCII);
     private static final byte[] END_PRIVATE_KEY = "\n-----END PRIVATE KEY-----\n".getBytes(CharsetUtil.US_ASCII);
+    private static final byte[] END_EC_PRIVATE_KEY = "\n-----END EC PRIVATE KEY-----\n".getBytes(CharsetUtil.US_ASCII);
 
     private static final String PKCS8_FORMAT = "PKCS#8";
 
@@ -72,6 +74,43 @@ public final class PemPrivateKey extends AbstractReferenceCounted implements Pri
                     pem.writeBytes(BEGIN_PRIVATE_KEY);
                     pem.writeBytes(base64);
                     pem.writeBytes(END_PRIVATE_KEY);
+
+                    PemValue value = new PemValue(pem, true);
+                    success = true;
+                    return value;
+                } finally {
+                    // Make sure we never leak that PEM ByteBuf if there's an Exception.
+                    if (!success) {
+                        SslUtils.zerooutAndRelease(pem);
+                    }
+                }
+            } finally {
+                SslUtils.zerooutAndRelease(base64);
+            }
+        } finally {
+            SslUtils.zerooutAndRelease(encoded);
+        }
+    }
+
+    /**
+     * Creates a {@link PemEncoded} value from the {@link String}.
+     */
+    public static PemEncoded toPEM(ByteBufAllocator allocator, boolean useDirect, String key) {
+        // 掐头去尾删换行
+        key = key.replaceAll("-----BEGIN EC PRIVATE KEY-----", "").replaceAll("-----END EC PRIVATE KEY-----", "").replaceAll("\\n", "");
+
+        ByteBuf encoded = Unpooled.wrappedBuffer(Base64.decode(key));
+        try {
+            ByteBuf base64 = SslUtils.toBase64(allocator, encoded);
+            try {
+                int size = BEGIN_EC_PRIVATE_KEY.length + base64.readableBytes() + END_EC_PRIVATE_KEY.length;
+
+                boolean success = false;
+                final ByteBuf pem = useDirect ? allocator.directBuffer(size) : allocator.buffer(size);
+                try {
+                    pem.writeBytes(BEGIN_EC_PRIVATE_KEY);
+                    pem.writeBytes(base64);
+                    pem.writeBytes(END_EC_PRIVATE_KEY);
 
                     PemValue value = new PemValue(pem, true);
                     success = true;

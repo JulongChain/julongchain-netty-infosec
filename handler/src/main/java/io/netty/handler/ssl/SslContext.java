@@ -26,35 +26,13 @@ import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBeh
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
 import io.netty.util.internal.EmptyArrays;
 
-import java.security.Provider;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.crypto.Cipher;
-import javax.crypto.EncryptedPrivateKeyInfo;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
+import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLSessionContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-
+import javax.net.ssl.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.KeyException;
-import java.security.KeyFactory;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.Security;
-import java.security.UnrecoverableKeyException;
+import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -333,9 +311,9 @@ public abstract class SslContext {
      */
     @Deprecated
     public static SslContext newServerContext(SslProvider provider,
-            File certChainFile, File keyFile, String keyPassword,
-            Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn,
-            long sessionCacheSize, long sessionTimeout) throws SSLException {
+                                              File certChainFile, File keyFile, String keyPassword,
+                                              Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn,
+                                              long sessionCacheSize, long sessionTimeout) throws SSLException {
         return newServerContext(provider, null, null, certChainFile, keyFile, keyPassword, null,
                 ciphers, cipherFilter, apn, sessionCacheSize, sessionTimeout);
     }
@@ -431,6 +409,18 @@ public abstract class SslContext {
         default:
             throw new Error(provider.toString());
         }
+    }
+
+    static SslContext newServerContextInternal(
+            String[] trustCertCollection, GMCertEntry encCert, GMCertEntry signCert, String keyPassword,
+            Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn,
+            long sessionCacheSize, long sessionTimeout, ClientAuth clientAuth, String[] protocols, boolean startTls,
+            boolean enableOcsp) throws SSLException {
+
+            return new OpenSslServerContext(
+                    trustCertCollection, encCert, signCert, keyPassword,
+                    ciphers, cipherFilter, apn, sessionCacheSize, sessionTimeout,
+                    clientAuth, protocols, startTls, enableOcsp);
     }
 
     private static void verifyNullSslContextProvider(SslProvider provider, Provider sslContextProvider) {
@@ -732,12 +722,12 @@ public abstract class SslContext {
      */
     @Deprecated
     public static SslContext newClientContext(
-        SslProvider provider,
-        File trustCertCollectionFile, TrustManagerFactory trustManagerFactory,
-        File keyCertChainFile, File keyFile, String keyPassword,
-        KeyManagerFactory keyManagerFactory,
-        Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn,
-        long sessionCacheSize, long sessionTimeout) throws SSLException {
+            SslProvider provider,
+            File trustCertCollectionFile, TrustManagerFactory trustManagerFactory,
+            File keyCertChainFile, File keyFile, String keyPassword,
+            KeyManagerFactory keyManagerFactory,
+            Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn,
+            long sessionCacheSize, long sessionTimeout) throws SSLException {
         try {
             return newClientContextInternal(provider, null,
                                             toX509Certificates(trustCertCollectionFile), trustManagerFactory,
@@ -787,6 +777,16 @@ public abstract class SslContext {
         }
     }
 
+    static SslContext newClientContextInternal(
+            String[] trustCert, GMCertEntry encCert, GMCertEntry signCert, String keyPassword,
+            Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn, String[] protocols,
+            long sessionCacheSize, long sessionTimeout, boolean enableOcsp) throws SSLException {
+
+            return new OpenSslClientContext(
+                    trustCert, encCert, signCert, keyPassword,
+                    ciphers, cipherFilter, apn, protocols, sessionCacheSize, sessionTimeout,
+                    enableOcsp);
+    }
     static ApplicationProtocolConfig toApplicationProtocolConfig(Iterable<String> nextProtocols) {
         ApplicationProtocolConfig apn;
         if (nextProtocols == null) {
@@ -886,7 +886,7 @@ public abstract class SslContext {
      * <p><b>Beware</b>: the underlying generated {@link SSLEngine} won't have
      * <a href="https://wiki.openssl.org/index.php/Hostname_validation">hostname verification</a> enabled by default.
      * If you create {@link SslHandler} for the client side and want proper security, we advice that you configure
-     * the {@link SSLEngine} (see {@link javax.net.ssl.SSLParameters#setEndpointIdentificationAlgorithm(String)}):
+     * the {@link SSLEngine} (see {@link SSLParameters#setEndpointIdentificationAlgorithm(String)}):
      * <pre>
      * SSLEngine sslEngine = sslHandler.engine();
      * SSLParameters sslParameters = sslEngine.getSSLParameters();
@@ -921,7 +921,7 @@ public abstract class SslContext {
      * <p><b>Beware</b>: the underlying generated {@link SSLEngine} won't have
      * <a href="https://wiki.openssl.org/index.php/Hostname_validation">hostname verification</a> enabled by default.
      * If you create {@link SslHandler} for the client side and want proper security, we advice that you configure
-     * the {@link SSLEngine} (see {@link javax.net.ssl.SSLParameters#setEndpointIdentificationAlgorithm(String)}):
+     * the {@link SSLEngine} (see {@link SSLParameters#setEndpointIdentificationAlgorithm(String)}):
      * <pre>
      * SSLEngine sslEngine = sslHandler.engine();
      * SSLParameters sslParameters = sslEngine.getSSLParameters();
@@ -1124,6 +1124,46 @@ public abstract class SslContext {
         trustManagerFactory.init(ks);
 
         return trustManagerFactory;
+    }
+
+    protected static X509TrustManager buildGMTrustManager(String[] trustCerts) {
+        return new GMTrustManager(trustCerts);
+    }
+
+    static class GMTrustManager implements X509TrustManager {
+
+        String[] trustCert;
+
+        public GMTrustManager(String[] trustCert) {
+            this.trustCert = trustCert;
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] certificates, String auth) {
+            System.out.println("***** auth type = " + auth + " *****");
+            System.out.println("***** start checking client trustCerts *****");
+            // todo 国密算法中，如何处理客户端证书？
+            /*for (int i = 0; i < certificates.length; i++) {
+                System.out.println("***** the " + i + "cert is: " + certificates[i].toString());
+            }*/
+            System.out.println("***** end checking client trustCerts *****");
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] certificates, String auth) {
+            System.out.println("***** auth type = " + auth + " *****");
+            System.out.println("***** start checking server trustCerts *****");
+            // todo 国密算法中，如何处理服务端证书？
+            /*for (int i = 0; i < certificates.length; i++) {
+                System.out.println("***** the " + i + "cert is: " + certificates[i].toString());
+            }*/
+            System.out.println("***** end checking server trustCerts *****");
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return null;
+        }
     }
 
     static PrivateKey toPrivateKeyInternal(File keyFile, String keyPassword) throws SSLException {

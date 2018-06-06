@@ -18,15 +18,10 @@ package io.netty.handler.ssl;
 import io.netty.handler.ssl.ReferenceCountedOpenSslServerContext.ServerContext;
 import io.netty.internal.tcnative.SSL;
 
+import javax.net.ssl.*;
 import java.io.File;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 
 import static io.netty.handler.ssl.ReferenceCountedOpenSslServerContext.newSessionContext;
 
@@ -352,6 +347,33 @@ public final class OpenSslServerContext extends OpenSslContext {
             ServerContext context = newSessionContext(this, ctx, engineMap, trustCertCollection, trustManagerFactory,
                                                       keyCertChain, key, keyPassword, keyManagerFactory);
             sessionContext = context.sessionContext;
+            keyMaterialManager = context.keyMaterialManager;
+            success = true;
+        } finally {
+            if (!success) {
+                release();
+            }
+        }
+    }
+
+    OpenSslServerContext(
+            String[] trustCerts, GMCertEntry encCert,
+            GMCertEntry signCert, String keyPassword,
+            Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn,
+            long sessionCacheSize, long sessionTimeout, ClientAuth clientAuth, String[] protocols, boolean startTls,
+            boolean enableOcsp) throws SSLException {
+        /** todo 不传keyCertChain 会怎样呢？
+         * 使用国密算法的话，这里的keyCertChain应该是null,会不会造成问题，还要看以后的运行情况
+         */
+        super(ciphers, cipherFilter, toNegotiator(apn), sessionCacheSize, sessionTimeout, SSL.SSL_MODE_SERVER, null, clientAuth, protocols, startTls, enableOcsp);
+        // Create a new SSL_CTX and configure it.
+        boolean success = false;
+        try {
+            ServerContext context = newSessionContext(this, ctx, engineMap, trustCerts, encCert, signCert, keyPassword);
+            sessionContext = context.sessionContext;
+            /** todo 这里的keyMaterialManager应该是null，会产生影响吗？
+             * 使用国密算法的话，这里的keyMaterialManager应该是null,会不会造成问题，还要看以后的运行情况
+             */
             keyMaterialManager = context.keyMaterialManager;
             success = true;
         } finally {

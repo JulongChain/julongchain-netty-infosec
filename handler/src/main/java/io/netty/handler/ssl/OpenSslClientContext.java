@@ -17,14 +17,13 @@ package io.netty.handler.ssl;
 
 import io.netty.internal.tcnative.SSL;
 
-import java.io.File;
-import java.security.PrivateKey;
-import java.security.cert.X509Certificate;
-
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import java.io.File;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
 
 import static io.netty.handler.ssl.ReferenceCountedOpenSslClientContext.newSessionContext;
 
@@ -181,9 +180,9 @@ public final class OpenSslClientContext extends OpenSslContext {
 
     OpenSslClientContext(X509Certificate[] trustCertCollection, TrustManagerFactory trustManagerFactory,
                          X509Certificate[] keyCertChain, PrivateKey key, String keyPassword,
-                                KeyManagerFactory keyManagerFactory, Iterable<String> ciphers,
-                                CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn, String[] protocols,
-                                long sessionCacheSize, long sessionTimeout, boolean enableOcsp)
+                         KeyManagerFactory keyManagerFactory, Iterable<String> ciphers,
+                         CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn, String[] protocols,
+                         long sessionCacheSize, long sessionTimeout, boolean enableOcsp)
             throws SSLException {
         super(ciphers, cipherFilter, apn, sessionCacheSize, sessionTimeout, SSL.SSL_MODE_CLIENT, keyCertChain,
                 ClientAuth.NONE, protocols, false, enableOcsp);
@@ -191,6 +190,22 @@ public final class OpenSslClientContext extends OpenSslContext {
         try {
             sessionContext = newSessionContext(this, ctx, engineMap, trustCertCollection, trustManagerFactory,
                                                keyCertChain, key, keyPassword, keyManagerFactory);
+            success = true;
+        } finally {
+            if (!success) {
+                release();
+            }
+        }
+    }
+
+    OpenSslClientContext(String[] trustCerts, GMCertEntry encCert, GMCertEntry signCert, String keyPassword, Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn, String[] protocols, long sessionCacheSize, long sessionTimeout, boolean enableOcsp) throws SSLException {
+        /** todo 不传keyCertChain 会怎样呢？
+         * 使用国密算法的话，这里的keyCertChain应该是null,会不会造成问题，还要看以后的运行情况
+         */
+        super(ciphers, cipherFilter, apn, sessionCacheSize, sessionTimeout, SSL.SSL_MODE_CLIENT, null, ClientAuth.NONE, protocols, false, enableOcsp);
+        boolean success = false;
+        try {
+            sessionContext = newSessionContext(this, ctx, engineMap, trustCerts, encCert, signCert, keyPassword);
             success = true;
         } finally {
             if (!success) {

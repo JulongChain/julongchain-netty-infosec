@@ -20,26 +20,19 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.internal.tcnative.CertificateVerifier;
 import io.netty.internal.tcnative.SSL;
 import io.netty.internal.tcnative.SSLContext;
-import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.ReferenceCounted;
-import io.netty.util.ResourceLeakDetector;
-import io.netty.util.ResourceLeakDetectorFactory;
-import io.netty.util.ResourceLeakTracker;
+import io.netty.util.*;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.StringUtil;
 import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
+import org.bouncycastle.util.Strings;
 
+import javax.net.ssl.*;
 import java.security.AccessController;
 import java.security.PrivateKey;
 import java.security.PrivilegedAction;
-import java.security.cert.CertPathValidatorException;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateExpiredException;
-import java.security.cert.CertificateNotYetValidException;
-import java.security.cert.CertificateRevokedException;
-import java.security.cert.X509Certificate;
+import java.security.cert.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -47,16 +40,6 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLHandshakeException;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509ExtendedKeyManager;
-import javax.net.ssl.X509ExtendedTrustManager;
-import javax.net.ssl.X509KeyManager;
-import javax.net.ssl.X509TrustManager;
 
 import static io.netty.handler.ssl.OpenSsl.DEFAULT_CIPHERS;
 import static io.netty.handler.ssl.OpenSsl.availableJavaCipherSuites;
@@ -727,6 +710,63 @@ public abstract class ReferenceCountedOpenSslContext extends SslContext implemen
             freeBio(keyCertChainBio);
             freeBio(keyCertChainBio2);
             if (encoded != null) {
+                encoded.release();
+            }
+        }
+    }
+
+    static void setKeyMaterial(long ctx, String encCert, String encKey, String signCert, String signKey, String keyPassword) throws SSLException {
+        /* Load the certificate file and private key. */
+        long encKeyBio = 0;
+        long signKeyBio = 0;
+        long encCertBio = 0;
+        long signCertBio = 0;
+        PemEncoded encoded = null;
+        try {
+            /**
+             * 1.作为服务端,在{@SslContextGMBuilder}中做了控制，必须要传加密证书和签名证书，这里不需要考虑
+             * 2.作为客户端,有可能没有传加密证书和签名证书.在底层openssl中做了限制，如果传了就认为是双向SSL,没有传
+             * 就是单向.并且证书和私钥要齐全
+             */
+            if (
+                    null != encCert &&
+                    !encCert.isEmpty() &&
+                    null != encKey &&
+                    !encKey.isEmpty() &&
+                    null != signCert &&
+                    !signCert.isEmpty() &&
+                    null != signKey &&
+                    !signKey.isEmpty()
+               ) {
+                ByteBufAllocator allocator = ByteBufAllocator.DEFAULT;
+                // Only encode one time
+                encoded = PemX509Certificate.toPEM(allocator, true, encCert);
+                encCertBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+
+                encoded = PemX509Certificate.toPEM(allocator, true, signCert);
+                signCertBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+
+                encoded = PemPrivateKey.toPEM(allocator, true, encKey);
+                encKeyBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+
+                encoded = PemPrivateKey.toPEM(allocator, true, signKey);
+                signKeyBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+            }
+            SSLContext.setCertificateExtBio(ctx, encCertBio, encKeyBio, signCertBio, signKeyBio, keyPassword == null ? StringUtil.EMPTY_STRING : keyPassword);
+        } catch (SSLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SSLException("failed to set certificate and key", e);
+        } finally {
+            freeBio(encKeyBio);
+            freeBio(signKeyBio);
+            freeBio(encCertBio);
+            freeBio(signCertBio);
+            if (encoded != null && encoded.refCnt() > 0) {
                 encoded.release();
             }
         }

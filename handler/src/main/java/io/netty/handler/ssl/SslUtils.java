@@ -22,12 +22,11 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.base64.Base64Dialect;
 
+import javax.net.ssl.SSLHandshakeException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Set;
-
-import javax.net.ssl.SSLHandshakeException;
 
 import static java.util.Arrays.asList;
 
@@ -96,7 +95,13 @@ final class SslUtils {
         "TLS_RSA_WITH_AES_128_GCM_SHA256",
         "TLS_RSA_WITH_AES_128_CBC_SHA",
         // AES256 requires JCE unlimited strength jurisdiction policy files.
-        "TLS_RSA_WITH_AES_256_CBC_SHA"
+        "TLS_RSA_WITH_AES_256_CBC_SHA",
+        /** 在原有的默认套件中加入国密算法套件
+         * todo 需要注意的是，如果启用了ECDHE算法，服务器会优先选择ECDHE算法套件，
+         * todo 并且ECDHE算法套件必须要求走双向SSL，客户端和服务器端必须要配置加密证书和签名证书
+         */
+        "TLS_ECDHE_WITH_SM4_SM3",
+        "TLS_ECC_WITH_SM4_SM3"
     };
 
     /**

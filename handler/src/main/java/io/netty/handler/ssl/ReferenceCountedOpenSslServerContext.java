@@ -23,16 +23,10 @@ import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
+import javax.net.ssl.*;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509ExtendedKeyManager;
-import javax.net.ssl.X509ExtendedTrustManager;
-import javax.net.ssl.X509KeyManager;
-import javax.net.ssl.X509TrustManager;
 
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
 
@@ -144,6 +138,67 @@ public final class ReferenceCountedOpenSslServerContext extends ReferenceCounted
             }
 
             final X509TrustManager manager = chooseTrustManager(trustManagerFactory.getTrustManagers());
+
+            // IMPORTANT: The callbacks set for verification must be static to prevent memory leak as
+            //            otherwise the context can never be collected. This is because the JNI code holds
+            //            a global reference to the callbacks.
+            //
+            //            See https://github.com/netty/netty/issues/5372
+
+            // Use this to prevent an error when running on java < 7
+            if (useExtendedTrustManager(manager)) {
+                SSLContext.setCertVerifyCallback(ctx,
+                        new ExtendedTrustManagerVerifyCallback(engineMap, (X509ExtendedTrustManager) manager));
+            } else {
+                SSLContext.setCertVerifyCallback(ctx, new TrustManagerVerifyCallback(engineMap, manager));
+            }
+
+            X509Certificate[] issuers = manager.getAcceptedIssuers();
+            if (issuers != null && issuers.length > 0) {
+                long bio = 0;
+                try {
+                    bio = toBIO(ByteBufAllocator.DEFAULT, issuers);
+                    if (!SSLContext.setCACertificateBio(ctx, bio)) {
+                        throw new SSLException("unable to setup accepted issuers for trustmanager " + manager);
+                    }
+                } finally {
+                    freeBio(bio);
+                }
+            }
+
+            if (PlatformDependent.javaVersion() >= 8) {
+                // Only do on Java8+ as SNIMatcher is not supported in earlier releases.
+                // IMPORTANT: The callbacks set for hostname matching must be static to prevent memory leak as
+                //            otherwise the context can never be collected. This is because the JNI code holds
+                //            a global reference to the matcher.
+                SSLContext.setSniHostnameMatcher(ctx, new OpenSslSniHostnameMatcher(engineMap));
+            }
+        } catch (SSLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SSLException("unable to setup trustmanager", e);
+        }
+
+        result.sessionContext = new OpenSslServerSessionContext(thiz);
+        result.sessionContext.setSessionIdContext(ID);
+        return result;
+    }
+
+    static ServerContext newSessionContext(ReferenceCountedOpenSslContext thiz, long ctx, OpenSslEngineMap engineMap,
+                                           String[] trustCerts,
+                                           GMCertEntry encCert,
+                                           GMCertEntry signCert,
+                                           String keyPassword)
+            throws SSLException {
+        ServerContext result = new ServerContext();
+        try {
+            SSLContext.setVerify(ctx, SSL.SSL_CVERIFY_NONE, VERIFY_DEPTH);
+            setKeyMaterial(ctx, encCert.getCert(), encCert.getKey(), signCert.getCert(), signCert.getKey(), keyPassword);
+        } catch (Exception e) {
+            throw new SSLException("failed to set certificate and key", e);
+        }
+        try {
+            final X509TrustManager manager = buildGMTrustManager(trustCerts);
 
             // IMPORTANT: The callbacks set for verification must be static to prevent memory leak as
             //            otherwise the context can never be collected. This is because the JNI code holds
