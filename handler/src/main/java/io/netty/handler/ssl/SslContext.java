@@ -25,19 +25,26 @@ import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
 import io.netty.util.internal.EmptyArrays;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.BigIntegers;
+import org.bouncycastle.util.encoders.Base64;
 
 import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
 import javax.net.ssl.*;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.security.*;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
+import java.security.cert.*;
+import java.security.cert.Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -1126,37 +1133,107 @@ public abstract class SslContext {
         return trustManagerFactory;
     }
 
-    protected static X509TrustManager buildGMTrustManager(String[] trustCerts) {
+    protected static X509TrustManager buildGMTrustManager(String[] trustCerts) throws CertificateException {
         return new GMTrustManager(trustCerts);
     }
 
     static class GMTrustManager implements X509TrustManager {
 
-        String[] trustCert;
+        ArrayList<X509Certificate> trustCerts;
+        private CertificateFactory certificateFactory;
 
-        public GMTrustManager(String[] trustCert) {
-            this.trustCert = trustCert;
+        public GMTrustManager(String[] trustCert) throws CertificateException {
+            // 没有设置信任证书，就不再做操作
+            if (null == trustCert || trustCert.length <= 0) {
+                return;
+            }
+            certificateFactory = CertificateFactory.getInstance("X.509", new BouncyCastleProvider());
+            trustCerts = new ArrayList<X509Certificate>(trustCert.length);
+            for (int i = 0; i < trustCert.length; i++) {
+                byte[] certBytes = Base64.decode(trustCert[i]);
+                trustCerts.add((X509Certificate) certificateFactory.generateCertificate(new ByteArrayInputStream(certBytes)));
+            }
         }
 
         @Override
-        public void checkClientTrusted(X509Certificate[] certificates, String auth) {
+        public void checkClientTrusted(X509Certificate[] certificates, String auth) throws CertificateException {
             System.out.println("***** auth type = " + auth + " *****");
             System.out.println("***** start checking client trustCerts *****");
-            // todo 国密算法中，如何处理客户端证书？
-            /*for (int i = 0; i < certificates.length; i++) {
-                System.out.println("***** the " + i + "cert is: " + certificates[i].toString());
-            }*/
+            if (null == trustCerts || trustCerts.size() <= 0) {
+                System.out.println("***** trust all client cert *****");
+            } else {
+                // todo 国密算法中，如何处理客户端证书？
+                boolean trust = false;
+                outerLoop:for (X509Certificate x509PeerCertificate : certificates) {
+                    x509PeerCertificate = (X509Certificate) certificateFactory.generateCertificate(new ByteArrayInputStream(x509PeerCertificate.getEncoded()));
+                    for (X509Certificate x509TrustCertificate : trustCerts) {
+                        // 序列号
+                        BigInteger clientSerialNumber = x509PeerCertificate.getSerialNumber();
+                        BigInteger trustSerialNumber = x509TrustCertificate.getSerialNumber();
+                        // DN
+                        Principal clientSubjectDN = x509PeerCertificate.getSubjectDN();
+                        Principal trustSubjectDN = x509TrustCertificate.getSubjectDN();
+                        // 颁发者DN
+                        Principal clientIssuerDN = x509PeerCertificate.getIssuerDN();
+                        // 先判断是不是过期了
+                        x509PeerCertificate.checkValidity();
+                        // 判断是不是同一张证书,或者是由它颁发的
+                        if (clientSerialNumber.equals(trustSerialNumber) && clientSubjectDN.getName().equals(trustSubjectDN.getName())) {
+                            // 是同一张证书,不用再继续遍历下去了
+                            trust = true;
+                            break outerLoop;
+                        } else if (clientIssuerDN.getName().equals(trustSubjectDN.getName())) {
+                            // client证书由trust证书颁发,不用再继续遍历下去了
+                            trust = true;
+                            break outerLoop;
+                        }
+                    }
+                }
+                if (!trust) {
+                    throw new CertificateException("证书验证失败!");
+                }
+            }
             System.out.println("***** end checking client trustCerts *****");
         }
 
         @Override
-        public void checkServerTrusted(X509Certificate[] certificates, String auth) {
+        public void checkServerTrusted(X509Certificate[] certificates, String auth) throws CertificateException {
             System.out.println("***** auth type = " + auth + " *****");
             System.out.println("***** start checking server trustCerts *****");
-            // todo 国密算法中，如何处理服务端证书？
-            /*for (int i = 0; i < certificates.length; i++) {
-                System.out.println("***** the " + i + "cert is: " + certificates[i].toString());
-            }*/
+            if (null == trustCerts || trustCerts.size() <= 0) {
+                System.out.println("***** trust all server cert *****");
+            } else {
+                // todo 国密算法中，如何处理服务端证书？
+                boolean trust = false;
+                outerLoop:for (X509Certificate x509PeerCertificate : certificates) {
+                    x509PeerCertificate = (X509Certificate) certificateFactory.generateCertificate(new ByteArrayInputStream(x509PeerCertificate.getEncoded()));
+                    for (X509Certificate x509TrustCertificate : trustCerts) {
+                        // 序列号
+                        BigInteger clientSerialNumber = x509PeerCertificate.getSerialNumber();
+                        BigInteger trustSerialNumber = x509TrustCertificate.getSerialNumber();
+                        // DN
+                        Principal clientSubjectDN = x509PeerCertificate.getSubjectDN();
+                        Principal trustSubjectDN = x509TrustCertificate.getSubjectDN();
+                        // 颁发者DN
+                        Principal clientIssuerDN = x509PeerCertificate.getIssuerDN();
+                        // 先判断是不是过期了
+                        x509PeerCertificate.checkValidity();
+                        // 判断是不是同一张证书,或者是由它颁发的
+                        if (clientSerialNumber.equals(trustSerialNumber) && clientSubjectDN.getName().equals(trustSubjectDN.getName())) {
+                            // 是同一张证书,不用再继续遍历下去了
+                            trust = true;
+                            break outerLoop;
+                        } else if (clientIssuerDN.getName().equals(trustSubjectDN.getName())) {
+                            // client证书由trust证书颁发,不用再继续遍历下去了
+                            trust = true;
+                            break outerLoop;
+                        }
+                    }
+                }
+                if (!trust) {
+                    throw new CertificateException("证书验证失败!");
+                }
+            }
             System.out.println("***** end checking server trustCerts *****");
         }
 

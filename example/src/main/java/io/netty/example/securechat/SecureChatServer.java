@@ -46,40 +46,44 @@ public final class SecureChatServer {
             "HQ4EFgQUa/4Y2o9COqa4bbMuiIM6NKLBMOEwDAYIKoEcz1UBg3UFAANHADBEAiAR\n" +
             "kDmkQ0Clio48994IUs63nA8k652O2C4+7EQs1SSbuAIgcwNUrHJyEYX8xT5BKl9T\n" +
             "lJOefzCNNJW5Z0f3Y/SjaG0=";
-    static final String ENC_CERT = "MIICmjCCAj+gAwIBAgIFEAJlABAwDAYIKoEcz1UBg3UFADBcMQswCQYDVQQGEwJD\n" +
+    static final String ENC_CERT = "MIIC0DCCAnOgAwIBAgIFEAMxBWAwDAYIKoEcz1UBg3UFADBcMQswCQYDVQQGEwJD\n" +
             "TjEwMC4GA1UECgwnQ2hpbmEgRmluYW5jaWFsIENlcnRpZmljYXRpb24gQXV0aG9y\n" +
-            "aXR5MRswGQYDVQQDDBJDRkNBIFRFU1QgU00yIE9DQTEwHhcNMTUxMjE2MDY0MTA1\n" +
-            "WhcNMTYxMjE2MDY0MTA1WjAxMQswCQYDVQQGEwJDTjENMAsGA1UECgwEQ0ZDQTET\n" +
-            "MBEGA1UEAwwKMTI3LjAuMC4yNzBZMBMGByqGSM49AgEGCCqBHM9VAYItA0IABFMc\n" +
-            "bMp7bz1xLUhw3Tv2PsMaEHnveSotGcrZrkJq8onmJ/J7DSDOavAIdfjxtPkl2FKr\n" +
-            "Nhzbmut7TkvaJAXSQ7SjggEVMIIBETAfBgNVHSMEGDAWgBRr/hjaj0I6prhtsy6I\n" +
-            "gzo0osEw4TBIBgNVHSAEQTA/MD0GCGCBHIbvKgEBMDEwLwYIKwYBBQUHAgEWI2h0\n" +
-            "dHA6Ly93d3cuY2ZjYS5jb20uY24vdXMvdXMtMTQuaHRtMAwGA1UdEwEB/wQCMAAw\n" +
-            "NwYDVR0fBDAwLjAsoCqgKIYmaHR0cDovL3VjcmwuY2ZjYS5jb20uY24vU00yL2Ny\n" +
-            "bDkyOC5jcmwwDwYDVR0RBAgwBocEfwAAGzAOBgNVHQ8BAf8EBAMCAzgwHQYDVR0O\n" +
-            "BBYEFPJi0ZRW9IhTkoQaHSPfm5pNLN6sMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggr\n" +
-            "BgEFBQcDATAMBggqgRzPVQGDdQUAA0cAMEQCIAu+fG5rInhb0wYrjZAoiJBU+V0z\n" +
-            "Ebqg/A0mGemDJjF1AiAhddXzojcsOaImdYEllWipKY9D2MkwvBsJDUlNLHSPkg==";
-    static final String ENC_KEY = "MHcCAQEEILcC5tzydDR7Am5LCvc6WIwPvJWCU+RFQw062z0NuYJQoAoGCCqBHM9V\n" +
-            "AYItoUQDQgAEUxxsyntvPXEtSHDdO/Y+wxoQee95Ki0ZytmuQmryieYn8nsNIM5q\n" +
-            "8Ah1+PG0+SXYUqs2HNua63tOS9okBdJDtA==";
-    static final String SIGN_CERT = "MIICnDCCAj+gAwIBAgIFEAJlAAkwDAYIKoEcz1UBg3UFADBcMQswCQYDVQQGEwJD\n" +
+            "aXR5MRswGQYDVQQDDBJDRkNBIFRFU1QgU00yIE9DQTEwHhcNMTYxMDIxMDkxNzE1\n" +
+            "WhcNMTkxMDIxMDkxNzE1WjB1MQswCQYDVQQGEwJjbjEXMBUGA1UECgwOQ0ZDQSBU\n" +
+            "ZXN0IE9DQTExGjAYBgNVBAsMEUxvY2FsIFJBIFRFU1RPQ0ExMRQwEgYDVQQLDAtX\n" +
+            "ZWIgU2VydmVyczEbMBkGA1UEAwwSd3d3LmViYW5rOTY1MTguY29tMFkwEwYHKoZI\n" +
+            "zj0CAQYIKoEcz1UBgi0DQgAEW23hZkRRR/FYHnVMAEyjzt8rbO+j8aSLe67MAs+C\n" +
+            "64UlVhS0uZBW7mCvvM/Ug3CGiIgT7cwNtVZVHMg7EK8bQaOCAQUwggEBMB8GA1Ud\n" +
+            "IwQYMBaAFGv+GNqPQjqmuG2zLoiDOjSiwTDhMEgGA1UdIARBMD8wPQYIYIEchu8q\n" +
+            "AQEwMTAvBggrBgEFBQcCARYjaHR0cDovL3d3dy5jZmNhLmNvbS5jbi91cy91cy0x\n" +
+            "NC5odG0wDAYDVR0TAQH/BAIwADA4BgNVHR8EMTAvMC2gK6AphidodHRwOi8vdWNy\n" +
+            "bC5jZmNhLmNvbS5jbi9TTTIvY3JsMTAwNS5jcmwwDgYDVR0PAQH/BAQDAgM4MB0G\n" +
+            "A1UdDgQWBBTYrX9ThAvgMhdt/MbbtD6zHWEp+zAdBgNVHSUEFjAUBggrBgEFBQcD\n" +
+            "AgYIKwYBBQUHAwEwDAYIKoEcz1UBg3UFAANJADBGAiEA1KTh3GO8dHoV4AB9rVP3\n" +
+            "kXa6YiuA+ejjFJkvwaxyyFoCIQC2VLoIdXbbnLO4Ld7JvbHJWelp1sYoK4xEarGz\n" +
+            "GAqCpQ==";
+    static final String ENC_KEY = "MHgCAQEEIQDsnQ/bup2+WH1xj2XElJXkxS5vD4PXCDNk0scgabNIp6AKBggqgRzP\n" +
+            "VQGCLaFEA0IABFtt4WZEUUfxWB51TABMo87fK2zvo/Gki3uuzALPguuFJVYUtLmQ\n" +
+            "Vu5gr7zP1INwhoiIE+3MDbVWVRzIOxCvG0E=";
+    static final String SIGN_CERT = "MIICzjCCAnOgAwIBAgIFEAMxBVkwDAYIKoEcz1UBg3UFADBcMQswCQYDVQQGEwJD\n" +
             "TjEwMC4GA1UECgwnQ2hpbmEgRmluYW5jaWFsIENlcnRpZmljYXRpb24gQXV0aG9y\n" +
-            "aXR5MRswGQYDVQQDDBJDRkNBIFRFU1QgU00yIE9DQTEwHhcNMTUxMjE2MDY0MTA1\n" +
-            "WhcNMTYxMjE2MDY0MTA1WjAxMQswCQYDVQQGEwJDTjENMAsGA1UECgwEQ0ZDQTET\n" +
-            "MBEGA1UEAwwKMTI3LjAuMC4yNzBZMBMGByqGSM49AgEGCCqBHM9VAYItA0IABJFu\n" +
-            "JgLqw/gJnOMAc2Vygwg51FqqThu/tQAy59aggsXcqyndnHQME6CclBwJ/jUdsXQV\n" +
-            "z6ZDXeegOWvA7pqrgc6jggEVMIIBETAfBgNVHSMEGDAWgBRr/hjaj0I6prhtsy6I\n" +
-            "gzo0osEw4TBIBgNVHSAEQTA/MD0GCGCBHIbvKgEBMDEwLwYIKwYBBQUHAgEWI2h0\n" +
-            "dHA6Ly93d3cuY2ZjYS5jb20uY24vdXMvdXMtMTQuaHRtMAwGA1UdEwEB/wQCMAAw\n" +
-            "NwYDVR0fBDAwLjAsoCqgKIYmaHR0cDovL3VjcmwuY2ZjYS5jb20uY24vU00yL2Ny\n" +
-            "bDkyOC5jcmwwDwYDVR0RBAgwBocEfwAAGzAOBgNVHQ8BAf8EBAMCBsAwHQYDVR0O\n" +
-            "BBYEFE2A8ydjS74G2SePqWdTTqn65x68MB0GA1UdJQQWMBQGCCsGAQUFBwMCBggr\n" +
-            "BgEFBQcDATAMBggqgRzPVQGDdQUAA0kAMEYCIQCVbIz9+jaGKnEvJ2pkQOyWmg9u\n" +
-            "cchtuYHC/Mi4g7IhEgIhAPx0lKRHy3C7qt4siBg+f3DlX33n4yAIFSUaoRMepvM4";
-    static final String SIGN_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqBHM9VAYItBG0wawIBAQQgJ9HQXXch/r9K08KO\n" +
-            "IGmpylsjYIy+FsW8MeeIvs5Icu2hRANCAASRbiYC6sP4CZzjAHNlcoMIOdRaqk4b\n" +
-            "v7UAMufWoILF3Ksp3Zx0DBOgnJQcCf41HbF0Fc+mQ13noDlrwO6aq4HO";
+            "aXR5MRswGQYDVQQDDBJDRkNBIFRFU1QgU00yIE9DQTEwHhcNMTYxMDIxMDkxNzE1\n" +
+            "WhcNMTkxMDIxMDkxNzE1WjB1MQswCQYDVQQGEwJjbjEXMBUGA1UECgwOQ0ZDQSBU\n" +
+            "ZXN0IE9DQTExGjAYBgNVBAsMEUxvY2FsIFJBIFRFU1RPQ0ExMRQwEgYDVQQLDAtX\n" +
+            "ZWIgU2VydmVyczEbMBkGA1UEAwwSd3d3LmViYW5rOTY1MTguY29tMFkwEwYHKoZI\n" +
+            "zj0CAQYIKoEcz1UBgi0DQgAEpeJbEJ3nEpm3v7Yhm9bc/uCJBW9YWeD89aH1u+Pp\n" +
+            "dQtnsFqh3nfQVwel15MoxB8KirUCjQbZ9jRd8POklZrOEqOCAQUwggEBMB8GA1Ud\n" +
+            "IwQYMBaAFGv+GNqPQjqmuG2zLoiDOjSiwTDhMEgGA1UdIARBMD8wPQYIYIEchu8q\n" +
+            "AQEwMTAvBggrBgEFBQcCARYjaHR0cDovL3d3dy5jZmNhLmNvbS5jbi91cy91cy0x\n" +
+            "NC5odG0wDAYDVR0TAQH/BAIwADA4BgNVHR8EMTAvMC2gK6AphidodHRwOi8vdWNy\n" +
+            "bC5jZmNhLmNvbS5jbi9TTTIvY3JsMTAwNS5jcmwwDgYDVR0PAQH/BAQDAgbAMB0G\n" +
+            "A1UdDgQWBBRrj81BmUI076WmThf7IVGmWapoODAdBgNVHSUEFjAUBggrBgEFBQcD\n" +
+            "AgYIKwYBBQUHAwEwDAYIKoEcz1UBg3UFAANHADBEAiAu316RMaa2nfscBSVeDeB6\n" +
+            "OGNjSeYo7apL1RLi02UcogIgeFaG4y4TUvjeuMV2Ly1DCO3N/1jHEX/AKponBKaL\n" +
+            "p0o=";
+    static final String SIGN_KEY = "MHcCAQEEIHloT3sonhjsO4PWtk7Af76igvXzs05ZU3QF5Wght2GioAoGCCqBHM9V\n" +
+            "AYItoUQDQgAEpeJbEJ3nEpm3v7Yhm9bc/uCJBW9YWeD89aH1u+PpdQtnsFqh3nfQ\n" +
+            "Vwel15MoxB8KirUCjQbZ9jRd8POklZrOEg==";
 
 
     public static void main(String[] args) throws Exception {
