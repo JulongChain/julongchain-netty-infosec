@@ -1,5 +1,3 @@
-# Forked Netty 
-
 一个Fork的Netty版本，主要用于支持国密SSL
 
 
