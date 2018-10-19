@@ -1,5 +1,3 @@
-# Forked Netty 
-
 一个Fork的Netty版本，主要用于支持国密SSL
 
 
@@ -14,4 +12,3 @@
 * 不影响原来的SSL功能
 * 将本项目编译出来的Jar和netty-tcnative编译出来的Jar放到要使用的项目中，替换原来对官方Netty的引用即可
 
-更多修改内容请查看提交日志
